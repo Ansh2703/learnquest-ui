@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+// We have removed the unused 'Link' import from this line.
 
 // A helper component for displaying a single badge with an attractive design
 const BadgeCard = ({ badge }) => (
@@ -94,4 +94,3 @@ function Profile() {
 }
 
 export default Profile;
-
