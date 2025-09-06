@@ -1,13 +1,16 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
+/*
+
+These lines act as placeholders. When our project builds, Tailwind will automatically replace them with all of its generated CSS styles.
+
+That's it! The setup is now 100% complete.
+
+To see it in action, let's start the React server again. In your `learnquest-ui` terminal, run:
+
+```bash
+npm start
+
+*/
