@@ -31,7 +31,9 @@ function Dashboard({ user }) {
             const token = localStorage.getItem('learnquest_token');
             if (token) {
                 try {
-                    const response = await axios.get('http://localhost:5000/api/users/dashboard', {
+                    // --- THE KEY CHANGE IS HERE ---
+                    // Instead of a hardcoded URL, we use the environment variable.
+                    const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/users/dashboard`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     setDashboardData(response.data);

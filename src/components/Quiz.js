@@ -1,128 +1,86 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 
-// The Quiz component receives the lesson data and an 'onComplete' function from its parent.
 function Quiz({ lesson, onComplete }) {
-  // We parse the quiz questions from the lesson's content string.
+  // Parse the quiz questions from the lesson's content
   const quizData = JSON.parse(lesson.content);
-  const questions = quizData.questions;
+  // State to track which question the user is currently on
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  // State to store the user's answers
+  const [selectedAnswers, setSelectedAnswers] = useState({});
+  // State to show the final result after submission
+  const [quizResult, setQuizResult] = useState(null);
 
-  // State to hold the user's answers, the final result, and submission status.
-  const [userAnswers, setUserAnswers] = useState(Array(questions.length).fill(null));
-  const [result, setResult] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
-
-  // This function updates the state when a user selects an option.
-  const handleOptionChange = (questionIndex, option) => {
-    if (submitted) return; // Don't allow changes after submitting.
-    
-    const newAnswers = [...userAnswers];
-    newAnswers[questionIndex] = option;
-    setUserAnswers(newAnswers);
+  // Function to handle when a user selects an answer
+  const handleAnswerSelect = (option) => {
+    setSelectedAnswers({ ...selectedAnswers, [currentQuestionIndex]: option });
   };
 
-  // This function handles the submission of the quiz.
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitted(true); // Lock the form.
-
-    const token = localStorage.getItem('learnquest_token');
-    try {
-      // We send the answers to our backend's progress endpoint.
-      const response = await axios.post(
-        'http://localhost:5000/api/users/progress',
-        { lessonId: lesson.id, answers: userAnswers },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      // We store the result from the backend (score, passed/failed).
-      setResult(response.data.quizResult);
-
-      // If the quiz was passed and points were awarded, we call the parent's
-      // onComplete function to let it know it should refresh the course data.
-      if (response.data.pointsAwarded > 0) {
-        onComplete();
-      }
-    } catch (error) {
-      console.error('Error submitting quiz:', error);
-      if (error.response && error.response.data) {
-        setResult({ passed: false, message: error.response.data.message });
-      }
+  // Function to move to the next question
+  const handleNextQuestion = () => {
+    if (currentQuestionIndex < quizData.questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
     }
   };
-  
-  // A small helper component to display the final result card.
-  const ResultDisplay = () => {
-    if (!result) return null;
-    return (
-      <div className={`p-4 rounded-md mt-6 ${result.passed ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'} border-l-4`}>
-        <h3 className={`font-bold ${result.passed ? 'text-green-800' : 'text-red-800'}`}>
-          {result.passed ? 'Quiz Passed!' : 'Quiz Failed'}
-        </h3>
-        <p className={`${result.passed ? 'text-green-700' : 'text-red-700'}`}>
-          You scored {result.correctAnswers} out of {result.totalQuestions}.
-          {result.passed ? ' You earned 100 points!' : ' You need at least 50% to pass.'}
-        </p>
-      </div>
-    );
+
+  // Function to submit the final answers to the parent component
+  const handleSubmitQuiz = () => {
+    const answersArray = quizData.questions.map((_, index) => selectedAnswers[index] || null);
+    onComplete(lesson.id, answersArray);
+    setQuizResult({ message: "Quiz submitted! Your results are being calculated." });
   };
 
-  // If the user has already completed this lesson, we show a simple message.
+  // If the user has already completed this quiz, show a message.
   if (lesson.isCompleted) {
-    return (
-      <div className="text-center p-6 bg-green-50 rounded-lg">
-        <p className="font-semibold text-green-700">You have already completed this quiz.</p>
-      </div>
-    );
+    return <div className="bg-emerald-900 text-emerald-300 p-4 rounded-lg text-center">You have already completed this quiz.</div>;
+  }
+  
+  // Show a message after the quiz is submitted.
+  if (quizResult) {
+    return <div className="text-center p-4 text-gray-300">{quizResult.message}</div>;
   }
 
-  // This is the main JSX for the quiz form.
-  return (
-    <div>
-      <p className="text-slate-600 mb-6">
-        Test your knowledge! You need a score of 50% or higher to pass this quiz and earn points.
-      </p>
-      <form onSubmit={handleSubmit}>
-        {questions.map((q, index) => (
-          <div key={index} className="mb-6 p-4 border border-slate-200 rounded-lg">
-            <p className="font-semibold text-slate-800 mb-3">{index + 1}. {q.question}</p>
-            <div className="space-y-2">
-              {q.options.map((option, optionIndex) => (
-                <label key={optionIndex} className="flex items-center p-2 rounded-md hover:bg-slate-50 cursor-pointer">
-                  <input
-                    type="radio"
-                    name={`question-${index}`}
-                    value={option}
-                    checked={userAnswers[index] === option}
-                    onChange={() => handleOptionChange(index, option)}
-                    disabled={submitted}
-                    className="mr-3 h-4 w-4"
-                  />
-                  {/* After submission, we highlight the correct answer in green. */}
-                  <span className={submitted && q.answer === option ? 'text-green-600 font-bold' : ''}>
-                    {option}
-                  </span>
-                  {/* And if the user chose the wrong answer, we mark it. */}
-                  {submitted && userAnswers[index] === option && q.answer !== option && (
-                    <span className="ml-3 text-red-600 font-bold">(Your Answer)</span>
-                  )}
-                </label>
-              ))}
-            </div>
-          </div>
-        ))}
+  const currentQuestion = quizData.questions[currentQuestionIndex];
+  const isLastQuestion = currentQuestionIndex === quizData.questions.length - 1;
 
-        {!submitted && (
-          <button type="submit" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-sm text-gray-400">Question {currentQuestionIndex + 1} of {quizData.questions.length}</p>
+        <h3 className="text-xl font-semibold text-gray-100 mt-1">{currentQuestion.question}</h3>
+      </div>
+      <div className="space-y-3">
+        {currentQuestion.options.map((option) => (
+          <button 
+            key={option} 
+            onClick={() => handleAnswerSelect(option)} 
+            className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${selectedAnswers[currentQuestionIndex] === option ? 'bg-emerald-800 border-emerald-500' : 'bg-gray-700 border-gray-600 hover:border-emerald-600'}`}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+      <div className="flex justify-end mt-4">
+        {isLastQuestion ? (
+          <button 
+            onClick={handleSubmitQuiz} 
+            disabled={!selectedAnswers[currentQuestionIndex]} 
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
+          >
             Submit Quiz
           </button>
+        ) : (
+          <button 
+            onClick={handleNextQuestion} 
+            disabled={!selectedAnswers[currentQuestionIndex]} 
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
+          >
+            Next
+          </button>
         )}
-      </form>
-
-      {/* The result card will appear here after submission. */}
-      {submitted && <ResultDisplay />}
+      </div>
     </div>
   );
 }
 
 export default Quiz;
+

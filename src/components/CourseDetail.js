@@ -9,17 +9,17 @@ function CourseDetail() {
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [message, setMessage] = useState(''); 
 
+  // This function fetches the details for the specific course from the backend.
   const fetchCourseDetails = useCallback(() => {
     const token = localStorage.getItem('learnquest_token');
     if (!token) return;
 
-    axios.get(`http://localhost:5000/api/courses/${courseId}`, {
+    axios.get(`${process.env.REACT_APP_API_URL}/api/courses/${courseId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(response => {
       setCourse(response.data);
-      // If a lesson is already selected (e.g., after completing one), keep it selected.
-      // Otherwise, default to the first lesson.
+      // If a lesson isn't already selected, default to showing the first one.
       if (!selectedLesson && response.data.Lessons.length > 0) {
         setSelectedLesson(response.data.Lessons[0]);
       }
@@ -27,31 +27,34 @@ function CourseDetail() {
     .catch(error => console.error('Error fetching course details:', error));
   }, [courseId, selectedLesson]);
 
+  // This effect runs the fetch function when the component first loads.
   useEffect(() => {
     fetchCourseDetails();
   }, [fetchCourseDetails]);
 
+  // This function is called after any lesson is successfully completed.
   const handleLessonComplete = () => {
     setMessage('Lesson completed! You earned points!');
-    fetchCourseDetails(); 
-    setTimeout(() => setMessage(''), 4000); 
+    fetchCourseDetails(); // Re-fetch data to update the UI
+    setTimeout(() => setMessage(''), 4000); // Hide the message after 4 seconds
   };
   
+  // This function sends the progress update to the backend.
   const handleProgressUpdate = async (lessonId, answers = null) => {
     const token = localStorage.getItem('learnquest_token');
     try {
-      await axios.post('http://localhost:5000/api/users/progress', 
+      await axios.post(`${process.env.REACT_APP_API_URL}/api/users/progress`, 
         { lessonId, answers },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       handleLessonComplete();
     } catch (error) {
       console.error('Error updating progress:', error);
-      setMessage('An error occurred. Please try again.');
+      setMessage(error.response?.data?.message || 'An error occurred.');
     }
   };
 
-  // Sub-component for Video Lessons
+  // A sub-component for displaying Video Lessons
   const VideoLesson = ({ lesson }) => {
     const videoData = JSON.parse(lesson.content);
     return (
@@ -68,26 +71,26 @@ function CourseDetail() {
         </div>
         <p className="text-gray-400 mb-6 leading-relaxed">{videoData.description}</p>
         {!lesson.isCompleted && (
-          <button onClick={() => handleProgressUpdate(lesson.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded">Mark as Complete</button>
+          <button onClick={() => handleProgressUpdate(lesson.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded transition-colors">Mark as Complete</button>
         )}
       </div>
     );
   };
   
-  // --- NEW: Sub-component for Text-Based Lessons ---
+  // A sub-component for displaying Text-Based Lessons
   const TextLesson = ({ lesson }) => {
     const textData = JSON.parse(lesson.content);
     return (
       <div>
         <p className="text-gray-300 leading-relaxed whitespace-pre-line mb-6">{textData.text}</p>
         {!lesson.isCompleted && (
-          <button onClick={() => handleProgressUpdate(lesson.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded">Mark as Complete</button>
+          <button onClick={() => handleProgressUpdate(lesson.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded transition-colors">Mark as Complete</button>
         )}
       </div>
     );
   };
 
-
+  // Display a loading message while fetching data
   if (!course) {
     return <p className="text-center text-gray-400">Loading course...</p>;
   }
@@ -104,7 +107,6 @@ function CourseDetail() {
               <button 
                 key={lesson.id} 
                 onClick={() => setSelectedLesson(lesson)}
-                // --- FIX: Improved styling for better visibility in dark mode ---
                 className={`w-full text-left p-3 rounded-md transition-colors duration-200 flex items-center text-sm ${selectedLesson?.id === lesson.id ? 'bg-emerald-900 text-emerald-300 font-semibold' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
               >
                 {lesson.isCompleted && <span className="text-emerald-400 font-bold mr-2">✓</span>}
@@ -123,10 +125,10 @@ function CourseDetail() {
               <h1 className="text-3xl font-bold text-gray-100 mb-4">{selectedLesson.title}</h1>
               {selectedLesson.lessonType === 'video' && <VideoLesson lesson={selectedLesson} />}
               {selectedLesson.lessonType === 'text' && <TextLesson lesson={selectedLesson} />}
-              {selectedLesson.lessonType === 'quiz' && <Quiz lesson={selectedLesson} onComplete={handleLessonComplete} />}
+              {selectedLesson.lessonType === 'quiz' && <Quiz lesson={selectedLesson} onComplete={handleProgressUpdate} />}
             </div>
           ) : (
-            <p>Select a lesson to begin.</p>
+            <p className="text-gray-400">Select a lesson to begin.</p>
           )}
         </div>
       </div>
@@ -135,4 +137,3 @@ function CourseDetail() {
 }
 
 export default CourseDetail;
-
